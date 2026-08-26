@@ -1,0 +1,9 @@
+# Credenciais e artefatos da Vercel CLI (nunca commitar)
+.env
+.env.*
+**/.vercel/
+
+node_modules/
+
+# Material comercial (só local, fora do repo público)
+Maestria_*.pdf

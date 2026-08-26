@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaptaRadar — Plataforma de Captação</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* CaptaRadar — design system estilo CRM corporativo (claro, denso, sem glass/neon) */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-dim: #eff6ff;
+  --primary-border: #bfdbfe;
+
+  --green: #059669;   --green-bg: #ecfdf5;   --green-border: #a7f3d0;
+  --amber: #b45309;   --amber-bg: #fffbeb;   --amber-border: #fde68a;
+  --red: #dc2626;     --red-bg: #fef2f2;     --red-border: #fecaca;
+  --purple: #7c3aed;  --purple-bg: #f5f3ff;  --purple-border: #ddd6fe;
+
+  --radius: 8px;
+  --radius-lg: 10px;
+  --shadow-hover: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --sidebar-w: 224px;
+}
+
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+svg.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; vertical-align: -3px; }
+
+/* ── Layout ─────────────────────────────── */
+.app { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  padding: 18px 12px; position: sticky; top: 0; height: 100vh; z-index: 42;
+}
+.sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 2px 8px 22px; }
+.sidebar-logo .mark {
+  width: 28px; height: 28px; border-radius: 7px; background: var(--primary);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sidebar-logo .mark svg { width: 16px; height: 16px; stroke: #fff; }
+.sidebar-logo strong { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+.sidebar-logo span { display: block; font-size: 10.5px; color: var(--text-faint); }
+
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px;
+  color: var(--text-muted); text-decoration: none; font-size: 13.3px; font-weight: 500;
+}
+.nav-item:hover { background: #f3f4f6; color: var(--text); }
+.nav-item.active { background: var(--primary-dim); color: var(--primary); font-weight: 600; }
+
+.sidebar-foot { margin-top: auto; font-size: 11px; color: var(--text-faint); padding: 10px 8px 2px; border-top: 1px solid var(--border); }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 28px; border-bottom: 1px solid var(--border); background: var(--surface); gap: 16px; flex-wrap: wrap;
+}
+.topbar h1 { font-size: 1.05rem; font-weight: 700; }
+.topbar p { font-size: .78rem; color: var(--text-muted); margin-top: 3px; max-width: 520px; }
+.topbar-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+.content { padding: 22px 28px 56px; }
+.page.hidden { display: none; }
+
+/* ── KPI cards ───────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+.kpi-label { font-size: .7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; letter-spacing: -.3px; }
+.kpi-sub { font-size: .75rem; color: var(--text-muted); margin-top: 5px; }
+.kpi-sub.up { color: var(--green); } .kpi-sub.down { color: var(--red); }
+
+/* ── Panels / cards genéricos ───────────────────── */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+.panel h3 { font-size: .9rem; font-weight: 700; margin: 0 0 2px; }
+.panel .panel-sub { font-size: .75rem; color: var(--text-muted); margin-bottom: 14px; }
+
+.grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1020px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ── Botões ───────────────────── */
+.btn {
+  font-family: inherit; font-size: .8rem; font-weight: 600; padding: 7px 14px;
+  border-radius: 6px; border: 1px solid var(--border-strong); background: #fff; color: var(--text);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .12s, border-color .12s;
+}
+.btn:hover { background: #f9fafb; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-sm { padding: 5px 10px; font-size: .74rem; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: #f3f4f6; }
+
+/* ── Tags de plataforma ───────────────────── */
+.tag { display: inline-flex; align-items: center; font-size: .66rem; font-weight: 700; padding: 2px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+.tag-quintoandar { color: var(--green); background: var(--green-bg); }
+.tag-zap         { color: var(--primary); background: var(--primary-dim); }
+.tag-vivareal    { color: var(--red); background: var(--red-bg); }
+.tag-olx         { color: var(--purple); background: var(--purple-bg); }
+
+/* ── Sinais (chips por categoria) ───────────────────── */
+.signal-chip { font-size: .7rem; padding: 2px 9px; border-radius: 20px; background: #f3f4f6; color: var(--text-muted); border: 1px solid var(--border); display: inline-block; }
+.signal-chip.cat-urgencia     { color: var(--red); background: var(--red-bg); border-color: var(--red-border); }
+.signal-chip.cat-preco        { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-border); }
+.signal-chip.cat-proprietario { color: var(--primary); background: var(--primary-dim); border-color: var(--primary-border); }
+.signal-chip.cat-mercado      { color: var(--green); background: var(--green-bg); border-color: var(--green-border); }
+
+/* ── Score ───────────────────── */
+.score-cell { display: flex; align-items: center; gap: 8px; }
+.score-num { font-weight: 700; font-size: .85rem; width: 22px; text-align: right; }
+.score-bar-track { width: 56px; height: 5px; border-radius: 3px; background: #e5e7eb; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; }
+
+/* ── Info tooltip ───────────────────── */
+.info-tip { position: relative; display: inline-flex; cursor: help; color: var(--text-faint); margin-left: 4px; }
+.info-tip .bubble {
+  position: absolute; bottom: 135%; left: 50%; transform: translateX(-50%);
+  background: #111827; color: #fff; font-size: .72rem; padding: 9px 11px; border-radius: 7px;
+  width: 230px; line-height: 1.45; opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 30;
+}
+.info-tip:hover .bubble { opacity: 1; }
+
+/* ── Filtros ───────────────────── */
+.filters-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.filters-bar select, .filters-bar input {
+  font-family: inherit; font-size: .8rem; padding: 7px 10px; border: 1px solid var(--border-strong);
+  border-radius: 6px; background: #fff; color: var(--text);
+}
+.filters-bar select:focus, .filters-bar input:focus { outline: none; border-color: var(--primary); }
+.filters-bar input[type=text] { flex: 1; min-width: 200px; }
+.filters-count { font-size: .75rem; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+/* ── Tabela ───────────────────── */
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.data-table thead th {
+  text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--text-muted); font-weight: 700; padding: 10px 16px; border-bottom: 1px solid var(--border);
+  background: #fafafa; cursor: pointer; user-select: none; white-space: nowrap;
+}
+.data-table thead th:hover { color: var(--text); }
+.data-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: #f9fafb; }
+.data-table td { padding: 11px 16px; vertical-align: middle; }
+.sort-ind { opacity: .55; font-size: .65rem; margin-left: 3px; }
+.empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: .85rem; }
+
+/* ── Drawer de detalhe ───────────────────── */
+.drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.25); opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 40; }
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 440px; max-width: 92vw;
+  background: #fff; border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,.08);
+  transform: translateX(100%); transition: transform .22s ease; z-index: 41; overflow-y: auto;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 22px; border-bottom: 1px solid var(--border); gap: 10px; }
+.drawer-head h2 { font-size: 1rem; font-weight: 700; }
+.drawer-head p { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
+.drawer-body { padding: 18px 22px 30px; }
+.drawer-section { margin-bottom: 22px; }
+.drawer-section h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; }
+.drawer-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+.score-breakdown-row { display: flex; align-items: center; gap: 10px; font-size: .78rem; margin-bottom: 8px; }
+.score-breakdown-row .cat-label { width: 100px; flex-shrink: 0; color: var(--text-muted); }
+.score-breakdown-row .bar-track { flex: 1; height: 6px; border-radius: 3px; background: #f3f4f6; overflow: hidden; }
+.score-breakdown-row .bar-fill { height: 100%; border-radius: 3px; }
+.score-breakdown-row .cat-val { width: 26px; text-align: right; font-weight: 700; }
+
+.timeline-item { display: flex; gap: 10px; padding-bottom: 16px; position: relative; }
+.timeline-item:not(:last-child)::before { content: ""; position: absolute; left: 4px; top: 14px; bottom: 0; width: 1px; background: var(--border); }
+.timeline-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--primary); margin-top: 4px; flex-shrink: 0; }
+.timeline-item p { font-size: .8rem; }
+.timeline-item span { font-size: .72rem; color: var(--text-faint); }
+
+.owner-card { display: flex; justify-content: space-between; align-items: center; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.owner-card .name { font-weight: 600; font-size: .85rem; }
+.owner-card .meta { font-size: .74rem; color: var(--text-muted); margin-top: 2px; }
+
+.suggestion-box { background: var(--primary-dim); border: 1px solid var(--primary-border); border-radius: 8px; padding: 12px 14px; font-size: .8rem; color: #1e3a8a; display: flex; gap: 8px; }
+.suggestion-box svg { flex-shrink: 0; margin-top: 1px; stroke: #1e3a8a; }
+
+/* ── Pipeline (kanban) ───────────────────── */
+.kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 980px) { .kanban { grid-template-columns: 1fr 1fr; } }
+.kanban-col { background: #f0f1f3; border-radius: var(--radius-lg); padding: 10px; min-height: 220px; transition: background .12s; }
+.kanban-col.drag-over { background: #e0e9ff; }
+.kanban-col-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 12px; }
+.kanban-col-head h4 { font-size: .78rem; font-weight: 700; }
+.kanban-col-head .count { font-size: .68rem; color: var(--text-muted); background: #fff; border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; }
+.kanban-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 11px 12px;
+  margin-bottom: 10px; cursor: grab;
+}
+.kanban-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-hover); }
+.kanban-card.dragging { opacity: .4; }
+.kanban-card .addr { font-size: .8rem; font-weight: 600; margin-bottom: 5px; }
+.kanban-card .meta-row { font-size: .72rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+
+/* ── Funil (dashboard) ───────────────────── */
+.funnel-row { margin-bottom: 12px; }
+.funnel-row .funnel-label { display: flex; justify-content: space-between; font-size: .78rem; margin-bottom: 5px; }
+.funnel-row .funnel-track { height: 10px; border-radius: 5px; background: #f3f4f6; overflow: hidden; }
+.funnel-row .funnel-fill { height: 100%; border-radius: 5px; background: var(--primary); }
+
+/* ── Atividade / feed ───────────────────── */
+.activity-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .8rem; }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.activity-item p { color: var(--text); }
+.activity-item span { color: var(--text-faint); font-size: .71rem; }
+
+.mini-list-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: .8rem; cursor: pointer; }
+.mini-list-row:last-child { border-bottom: none; }
+.mini-list-row:hover .addr-link { color: var(--primary); }
+
+/* ── Configurações ───────────────────── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 940px) { .settings-grid { grid-template-columns: 1fr; } }
+.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.switch-row:last-child { border-bottom: none; }
+.switch-row .label { font-size: .84rem; font-weight: 500; }
+.switch-row .desc { font-size: .74rem; color: var(--text-muted); margin-top: 2px; }
+
+.switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .track { position: absolute; inset: 0; background: #d1d5db; border-radius: 20px; transition: .15s; cursor: pointer; }
+.switch .track::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+.switch input:checked + .track { background: var(--primary); }
+.switch input:checked + .track::before { transform: translateX(16px); }
+
+.chip-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; background: #f3f4f6; border-radius: 14px; padding: 4px 10px; font-size: .76rem; }
+.chip button { border: none; background: none; cursor: pointer; color: var(--text-muted); display: flex; padding: 0; }
+.chip-add-input { border: none; outline: none; font-size: .8rem; flex: 1; min-width: 100px; font-family: inherit; padding: 4px; }
+
+.field-row { margin-bottom: 14px; }
+.field-row label { display: block; font-size: .78rem; font-weight: 600; margin-bottom: 6px; }
+.field-row input[type=text], .field-row input[type=range] { width: 100%; }
+.field-row input[type=text] { font-family: inherit; font-size: .82rem; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.range-val { font-size: .78rem; color: var(--text-muted); margin-top: 4px; }
+
+.integration-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.integration-row:last-child { border-bottom: none; }
+.integration-row .name { font-weight: 600; font-size: .84rem; display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.status-connected { color: var(--green); }
+.status-connected .status-dot { background: var(--green); }
+.status-pending { color: var(--text-faint); }
+.status-pending .status-dot { background: var(--text-faint); }
+
+.copy-field { display: flex; gap: 6px; }
+.copy-field input { flex: 1; font-family: ui-monospace, monospace; font-size: .76rem; background: #fafafa; }
+
+/* ── Toast ───────────────────── */
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(12px);
+  background: #111827; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: .82rem;
+  display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: all .2s; z-index: 100;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast svg { stroke: var(--green); }
+
+/* ── Menu mobile ───────────────────── */
+.btn-menu { display: none; }
+.sidebar-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.35); z-index: 45;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
+
+/* ── Responsivo ───────────────────── */
+@media (max-width: 760px) {
+  .btn-menu { display: inline-flex; }
+  .sidebar { position: fixed; z-index: 46; transform: translateX(-100%); transition: transform .2s; }
+  .sidebar.open { transform: translateX(0); }
+  .content { padding: 16px; }
+  .topbar { padding: 14px 16px; }
+}
+/* ── Usuário na sidebar ───────────────────── */
+.sidebar-user {
+  margin-top: auto; display: flex; align-items: center; gap: 10px;
+  padding: 12px 8px 2px; border-top: 1px solid var(--border);
+}
+.sidebar-user .avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--primary-dim);
+  color: var(--primary); font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sidebar-user .u-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.sidebar-user .u-mail { font-size: 10.5px; color: var(--text-faint); }
+.sidebar-user .btn-logout {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  color: var(--text-faint); padding: 6px; border-radius: 6px; display: flex;
+}
+.sidebar-user .btn-logout:hover { background: #f3f4f6; color: var(--text); }
+
+/* ── Modal de mensagem (IA) ───────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.35); opacity: 0;
+  pointer-events: none; transition: opacity .15s; z-index: 60;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -48%) scale(.98);
+  width: 520px; max-width: 94vw; max-height: 90vh; overflow-y: auto;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.18); z-index: 61;
+  opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s;
+}
+.modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.modal-head h3 { font-size: .95rem; font-weight: 700; }
+.modal-head p { font-size: .76rem; color: var(--text-muted); margin-top: 2px; }
+.modal-body { padding: 16px 20px 20px; }
+.msg-preview {
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+  padding: 14px 16px; font-size: .84rem; line-height: 1.6; color: #14532d;
+  white-space: pre-wrap; margin-bottom: 8px;
+}
+.msg-meta { font-size: .72rem; color: var(--text-faint); margin-bottom: 14px; }
+.modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Tela de login (demo) ───────────────────── */
+.login-screen {
+  position: fixed; inset: 0; z-index: 200; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.login-screen.hidden { display: none; }
+.login-card {
+  width: 380px; max-width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 36px 34px; box-shadow: 0 4px 24px rgba(0,0,0,.06);
+}
+.login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+.login-logo .mark {
+  width: 34px; height: 34px; border-radius: 8px; background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-logo .mark svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.login-logo strong { font-size: 17px; font-weight: 700; }
+.login-logo span { display: block; font-size: 11px; color: var(--text-faint); }
+.login-card h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.login-card .login-sub { font-size: .8rem; color: var(--text-muted); margin-bottom: 22px; }
+.login-field { margin-bottom: 14px; }
+.login-field label { display: block; font-size: .76rem; font-weight: 600; margin-bottom: 6px; }
+.login-field input {
+  width: 100%; font-family: inherit; font-size: .86rem; padding: 9px 12px;
+  border: 1px solid var(--border-strong); border-radius: 7px; color: var(--text);
+}
+.login-field input:focus { outline: none; border-color: var(--primary); }
+.login-error { font-size: .76rem; color: var(--red); margin-bottom: 12px; display: none; }
+.login-error.show { display: block; }
+.btn-login {
+  width: 100%; font-family: inherit; font-size: .88rem; font-weight: 600; padding: 10px;
+  background: var(--primary); color: #fff; border: none; border-radius: 7px; cursor: pointer;
+}
+.btn-login:hover { background: var(--primary-dark); }
+.login-note {
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: .72rem; color: var(--text-faint); text-align: center; line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="mark"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+      <div><strong>CaptaRadar</strong><span>Captação inteligente</span></div>
+    </div>
+    <h1>Entrar</h1>
+    <div class="login-sub">Use as credenciais de acesso enviadas pra você.</div>
+    <form id="loginForm">
+      <div class="login-field">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seuemail@empresa.com.br" autocomplete="off" required>
+      </div>
+      <div class="login-field">
+        <label>Senha</label>
+        <input type="password" id="loginPass" placeholder="Sua senha" required>
+      </div>
+      <div class="login-error" id="loginError">Senha incorreta. Confira as credenciais de demonstração enviadas.</div>
+      <button type="submit" class="btn-login">Entrar</button>
+    </form>
+    <div class="login-note">Ambiente de demonstração com dados representativos.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function getSession() {
+    try { return sessionStorage.getItem('captaradar_demo'); } catch (e) { return null; }
+  }
+  function setSession() {
+    try { sessionStorage.setItem('captaradar_demo', 'ok'); } catch (e) {}
+  }
+  const screen = document.getElementById('loginScreen');
+  if (getSession() === 'ok') screen.classList.add('hidden');
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const pass = document.getElementById('loginPass').value.trim();
+    if (pass === 'imob2026') {
+      setSession();
+      screen.classList.add('hidden');
+    } else {
+      document.getElementById('loginError').classList.add('show');
+    }
+  });
+})();
+</script>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+      <div><strong>CaptaRadar</strong><span>Captação inteligente</span></div>
+    </div>
+    <nav class="nav" id="mainNav">
+      <a href="#dashboard" class="nav-item" data-route="dashboard">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+        Dashboard
+      </a>
+      <a href="#oportunidades" class="nav-item" data-route="oportunidades">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        Oportunidades
+      </a>
+      <a href="#pipeline" class="nav-item" data-route="pipeline">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="16" y="2" width="4" height="18" rx="1"/></svg>
+        Pipeline
+      </a>
+      <a href="#configuracoes" class="nav-item" data-route="configuracoes">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="10"/><line x1="4" y1="6" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="14"/><line x1="12" y1="10" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="17"/><line x1="20" y1="13" x2="20" y2="3"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="20" cy="15" r="2"/></svg>
+        Configurações
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="avatar">D</div>
+      <div><div class="u-name">Conta demonstração</div><div class="u-mail">acesso de avaliação</div></div>
+      <button class="btn-logout" id="btnLogout" title="Sair">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSubtitle">Visão geral da captação nos últimos 30 dias.</p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-menu" id="btnMenuToggle" aria-label="Abrir menu">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <button class="btn" id="btnScan">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 0114-4.5M20 14a8 8 0 01-14 4.5"/></svg>
+          Rodar novo scan
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <section id="page-dashboard" class="page"></section>
+      <section id="page-oportunidades" class="page hidden"></section>
+      <section id="page-pipeline" class="page hidden"></section>
+      <section id="page-configuracoes" class="page hidden"></section>
+
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer"></aside>
+
+<div class="modal-overlay" id="msgModalOverlay"></div>
+<div class="modal" id="msgModal">
+  <div class="modal-head">
+    <div>
+      <h3>Mensagem de abordagem</h3>
+      <p id="msgModalSub">Gerada pela IA a partir dos sinais do anúncio</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="msgModalClose">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="msg-preview" id="msgPreview"></div>
+    <div class="msg-meta" id="msgMeta"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" id="btnOpenWhats">Abrir no WhatsApp</button>
+      <button class="btn btn-sm" id="btnCopyMsg">Copiar mensagem</button>
+      <button class="btn btn-sm" id="btnMarkContacted">Marcar como contatado</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+  <span id="toastMsg">Ação concluída</span>
+</div>
+
+<script>
+// CaptaRadar — mock de produto (dados fictícios, tudo roda no navegador)
+
+const ICONS = {
+  x: '<svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  info: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  message: '<svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
+  phone: '<svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 013.11 4.18 2 2 0 015.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L9.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>',
+  copy: '<svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
+  chevronRight: '<svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>'
+};
+
+const PLATFORMS = {
+  quintoandar: { label: 'QuintoAndar' },
+  zap:         { label: 'Zap Imóveis' },
+  vivareal:    { label: 'VivaReal' },
+  olx:         { label: 'OLX' }
+};
+
+const SIGNAL_CATS = {
+  preco:        { label: 'Preço' },
+  urgencia:     { label: 'Urgência' },
+  proprietario: { label: 'Proprietário' },
+  mercado:      { label: 'Mercado' }
+};
+
+const PIPELINE_STAGES = [
+  { key: 'novo',       label: 'Novo Lead' },
+  { key: 'contatado',  label: 'Contatado' },
+  { key: 'negociando', label: 'Em Negociação' },
+  { key: 'fechado',    label: 'Fechado' }
+];
+
+const NEIGHBORHOODS = ['Barra da Tijuca', 'Recreio', 'Botafogo', 'Tijuca', 'Copacabana', 'Ipanema', 'Leblon', 'Jacarepaguá'];
+
+const OPPORTUNITIES = [
+  { id:'1',  endereco:'Rua Sernambetiba, 1420 — Apto 302',            bairro:'Barra da Tijuca', plataforma:'quintoandar', preco:890000,  score:91, diasAnuncio:41, estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 41 dias sem alteração'},{cat:'proprietario',texto:'Proprietário com 2 imóveis na região'},{cat:'preco',texto:'Preço 8% acima da média do m²'}],
+    proprietario:{nome:'Marcos Vidal', tipo:'Pessoa física', telefone:'(21) 98211-4432'} },
+  { id:'2',  endereco:'Av. das Américas, 3500 — Bloco 4, Apto 1104',  bairro:'Recreio',         plataforma:'zap',        preco:1250000, score:84, diasAnuncio:12, estagio:'contatado',
+    sinais:[{cat:'urgencia',texto:'Repostado em 3 portais diferentes'},{cat:'proprietario',texto:'Sem corretor exclusivo identificado'}],
+    proprietario:{nome:'Imobiliária Costa Verde', tipo:'Imobiliária parceira', telefone:'(21) 3025-7788'} },
+  { id:'3',  endereco:'Rua Voluntários da Pátria, 89 — Cobertura',    bairro:'Botafogo',        plataforma:'vivareal',   preco:2100000, score:78, diasAnuncio:67, estagio:'novo',
+    sinais:[{cat:'mercado',texto:'Condomínio com 3 unidades à venda'},{cat:'urgencia',texto:'Anúncio antigo (67 dias)'}],
+    proprietario:{nome:'Renata Salles', tipo:'Pessoa física', telefone:'(21) 99876-1120'} },
+  { id:'4',  endereco:'Rua Conde de Bonfim, 210 — Apto 501',          bairro:'Tijuca',          plataforma:'olx',        preco:520000,  score:73, diasAnuncio:5,  estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Proprietário pessoa física (sem imobiliária)'}],
+    proprietario:{nome:'João Araújo', tipo:'Pessoa física', telefone:'(21) 98744-0091'} },
+  { id:'5',  endereco:'Av. Lúcio Costa, 6800 — Apto 803',             bairro:'Barra da Tijuca', plataforma:'quintoandar', preco:970000, score:66, diasAnuncio:9,  estagio:'negociando',
+    sinais:[{cat:'mercado',texto:'Baixa concorrência no condomínio'}],
+    proprietario:{nome:'Fernanda Reis', tipo:'Pessoa física', telefone:'(21) 99001-2234'} },
+  { id:'6',  endereco:'Rua São Clemente, 155 — Apto 202',             bairro:'Botafogo',        plataforma:'zap',        preco:780000,  score:52, diasAnuncio:5,  estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio recente (5 dias)'}],
+    proprietario:{nome:'Paulo Nogueira', tipo:'Pessoa física', telefone:'(21) 98650-7712'} },
+  { id:'7',  endereco:'Av. Atlântica, 2020 — Apto 1201',              bairro:'Copacabana',      plataforma:'vivareal',   preco:1450000, score:88, diasAnuncio:54, estagio:'contatado',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 54 dias sem alteração'},{cat:'preco',texto:'Queda de preço de 7% nos últimos 30 dias'},{cat:'proprietario',texto:'Proprietário com 3 imóveis na região'}],
+    proprietario:{nome:'Grupo Litoral Imóveis', tipo:'Imobiliária parceira', telefone:'(21) 3222-9090'} },
+  { id:'8',  endereco:'Rua Visconde de Pirajá, 470 — Apto 602',       bairro:'Ipanema',         plataforma:'olx',        preco:3200000, score:95, diasAnuncio:3,  estagio:'fechado',
+    sinais:[{cat:'mercado',texto:'Alta demanda no bairro nas últimas semanas'},{cat:'proprietario',texto:'Proprietário pessoa física (sem imobiliária)'}],
+    proprietario:{nome:'Cecília Prado', tipo:'Pessoa física', telefone:'(21) 99320-5581'} },
+  { id:'9',  endereco:'Av. Ataulfo de Paiva, 1100 — Apto 901',        bairro:'Leblon',          plataforma:'quintoandar', preco:2850000, score:90, diasAnuncio:22, estagio:'contatado',
+    sinais:[{cat:'preco',texto:'Preço 5% acima da média do m²'},{cat:'urgencia',texto:'Repostado em 2 portais diferentes'}],
+    proprietario:{nome:'André Klein', tipo:'Pessoa física', telefone:'(21) 98123-4477'} },
+  { id:'10', endereco:'Estrada do Tindiba, 340 — Casa',               bairro:'Jacarepaguá',     plataforma:'zap',        preco:480000,  score:61, diasAnuncio:30, estagio:'novo',
+    sinais:[{cat:'mercado',texto:'Condomínio com 5 unidades à venda'}],
+    proprietario:{nome:'Marcelo Dutra', tipo:'Pessoa física', telefone:'(21) 98877-6612'} },
+  { id:'11', endereco:'Av. das Américas, 19000 — Bloco 2, Apto 305',  bairro:'Recreio',         plataforma:'vivareal',   preco:610000,  score:58, diasAnuncio:15, estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Sem corretor exclusivo identificado'}],
+    proprietario:{nome:'Simone Aguiar', tipo:'Pessoa física', telefone:'(21) 99456-8823'} },
+  { id:'12', endereco:'Rua Uruguai, 300 — Apto 104',                  bairro:'Tijuca',          plataforma:'olx',        preco:430000,  score:47, diasAnuncio:2,  estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio recente (2 dias)'}],
+    proprietario:{nome:'Carlos Bittencourt', tipo:'Pessoa física', telefone:'(21) 98230-1145'} },
+  { id:'13', endereco:'Av. Sernambetiba, 3300 — Apto 1502',           bairro:'Barra da Tijuca', plataforma:'zap',        preco:1180000, score:82, diasAnuncio:38, estagio:'contatado',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 38 dias sem alteração'},{cat:'preco',texto:'Preço abaixo da média do bairro'}],
+    proprietario:{nome:'Investidor RJ Capital', tipo:'Investidor', telefone:'(21) 3399-2200'} },
+  { id:'14', endereco:'Rua Muniz Barreto, 720 — Apto 301',            bairro:'Botafogo',        plataforma:'quintoandar', preco:690000, score:55, diasAnuncio:8,  estagio:'novo',
+    sinais:[{cat:'mercado',texto:'Baixa concorrência no condomínio'}],
+    proprietario:{nome:'Beatriz Nunes', tipo:'Pessoa física', telefone:'(21) 99887-3345'} },
+  { id:'15', endereco:'Rua Barata Ribeiro, 502 — Apto 205',           bairro:'Copacabana',      plataforma:'olx',        preco:560000,  score:69, diasAnuncio:19, estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Proprietário com 2 imóveis na região'},{cat:'urgencia',texto:'Repostado em 3 portais diferentes'}],
+    proprietario:{nome:'Jorge Salgado', tipo:'Pessoa física', telefone:'(21) 98765-4321'} },
+  { id:'16', endereco:'Rua Vinícius de Moraes, 130 — Apto 402',       bairro:'Ipanema',         plataforma:'vivareal',   preco:2400000, score:86, diasAnuncio:44, estagio:'negociando',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 44 dias sem alteração'},{cat:'preco',texto:'Queda de preço de 4% nos últimos 30 dias'}],
+    proprietario:{nome:'Imobiliária Vista Mar', tipo:'Imobiliária parceira', telefone:'(21) 3555-1010'} },
+  { id:'17', endereco:'Rua Dias Ferreira, 250 — Apto 701',            bairro:'Leblon',          plataforma:'zap',        preco:3100000, score:79, diasAnuncio:25, estagio:'novo',
+    sinais:[{cat:'mercado',texto:'Alta demanda no bairro nas últimas semanas'}],
+    proprietario:{nome:'Ricardo Amaral', tipo:'Pessoa física', telefone:'(21) 99112-8834'} },
+  { id:'18', endereco:'Rua Geremário Dantas, 800 — Casa',             bairro:'Jacarepaguá',     plataforma:'quintoandar', preco:395000, score:44, diasAnuncio:60, estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 60 dias sem alteração'}],
+    proprietario:{nome:'Vanessa Lima', tipo:'Pessoa física', telefone:'(21) 98456-7723'} },
+  { id:'19', endereco:'Av. Alfredo Baltazar da Silveira, 720 — Apto 604', bairro:'Recreio',     plataforma:'olx',        preco:730000,  score:63, diasAnuncio:14, estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Proprietário pessoa física (sem imobiliária)'}],
+    proprietario:{nome:'Diego Farias', tipo:'Pessoa física', telefone:'(21) 99678-4432'} },
+  { id:'20', endereco:'Rua Mariz e Barros, 640 — Apto 303',           bairro:'Tijuca',          plataforma:'vivareal',   preco:610000,  score:71, diasAnuncio:33, estagio:'contatado',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 33 dias sem alteração'},{cat:'mercado',texto:'Condomínio com 4 unidades à venda'}],
+    proprietario:{nome:'Ana Paula Correia', tipo:'Pessoa física', telefone:'(21) 98890-1123'} },
+  { id:'21', endereco:'Av. das Américas, 500 — Apto 1801',            bairro:'Barra da Tijuca', plataforma:'olx',        preco:1520000, score:76, diasAnuncio:17, estagio:'novo',
+    sinais:[{cat:'preco',texto:'Preço 6% acima da média do m²'}],
+    proprietario:{nome:'Felipe Rocha', tipo:'Pessoa física', telefone:'(21) 99234-5567'} },
+  { id:'22', endereco:'Rua Assis Bueno, 60 — Apto 101',               bairro:'Botafogo',        plataforma:'vivareal',   preco:640000,  score:50, diasAnuncio:6,  estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio recente (6 dias)'}],
+    proprietario:{nome:'Camila Duarte', tipo:'Pessoa física', telefone:'(21) 98321-9987'} },
+  { id:'23', endereco:'Rua Santa Clara, 150 — Apto 801',              bairro:'Copacabana',      plataforma:'zap',        preco:980000,  score:74, diasAnuncio:29, estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Proprietário com 2 imóveis na região'},{cat:'preco',texto:'Queda de preço de 3% nos últimos 30 dias'}],
+    proprietario:{nome:'Otávio Barros', tipo:'Pessoa física', telefone:'(21) 99567-2234'} },
+  { id:'24', endereco:'Av. Bartolomeu Mitre, 400 — Apto 1002',        bairro:'Leblon',          plataforma:'quintoandar', preco:2950000, score:93, diasAnuncio:48, estagio:'fechado',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 48 dias sem alteração'},{cat:'proprietario',texto:'Proprietário com 4 imóveis na região'},{cat:'mercado',texto:'Baixa concorrência no condomínio'}],
+    proprietario:{nome:'Fundo Imob Prime', tipo:'Investidor', telefone:'(21) 3488-0022'} }
+];
+
+const INITIAL_ACTIVITY = [
+  { texto:'Novo anúncio duplicado detectado em 3 portais', bairro:'Barra da Tijuca', quando:'há 12 min', color:'var(--red)' },
+  { texto:'Proprietário com histórico de 2+ imóveis identificado', bairro:'Recreio', quando:'há 47 min', color:'var(--primary)' },
+  { texto:'Queda de preço de 6% identificada em anúncio monitorado', bairro:'Tijuca', quando:'há 2h', color:'var(--amber)' },
+  { texto:'Anúncio parado há mais de 60 dias sem alteração', bairro:'Botafogo', quando:'há 3h', color:'var(--red)' },
+  { texto:'Baixa concorrência detectada em condomínio monitorado', bairro:'Ipanema', quando:'há 5h', color:'var(--green)' },
+  { texto:'Scan completo das 4 plataformas concluído', quando:'há 6h', color:'var(--text-faint)' }
+];
+
+const SETTINGS = {
+  platforms: { quintoandar: true, zap: true, vivareal: true, olx: false },
+  bairros: ['Barra da Tijuca', 'Recreio', 'Botafogo', 'Tijuca'],
+  minScoreAlert: 70,
+  notifyEmail: true,
+  notifyWhats: true,
+  webhookUrl: 'https://hooks.captaradar.com/wh_8f2ac91b3e',
+  whatsappConnected: true
+};
+
+const state = {
+  sortField: 'score',
+  sortDir: 'desc',
+  filters: { plataforma: '', bairro: '', minScore: 0, busca: '' },
+  scanCount: 0,
+  activity: [...INITIAL_ACTIVITY],
+  currentDrawerId: null
+};
+
+let weeklyChartInstance = null;
+
+// ── Helpers ───────────────────────────────
+function formatBRL(v) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+}
+function scoreColor(score) {
+  if (score >= 80) return 'var(--green)';
+  if (score >= 60) return 'var(--primary)';
+  if (score >= 40) return 'var(--amber)';
+  return 'var(--red)';
+}
+function stageLabel(key) {
+  const s = PIPELINE_STAGES.find(x => x.key === key);
+  return s ? s.label : key;
+}
+function categoryScore(op, catKey) {
+  const count = op.sinais.filter(s => s.cat === catKey).length;
+  return Math.min(100, 25 + count * 25);
+}
+function buildTimeline(op) {
+  const events = [{ texto: `Anúncio publicado na ${PLATFORMS[op.plataforma].label}`, quando: `há ${op.diasAnuncio} dia${op.diasAnuncio === 1 ? '' : 's'}` }];
+  const meio = Math.max(1, Math.floor(op.diasAnuncio / 2));
+  if (op.sinais[0]) events.push({ texto: op.sinais[0].texto, quando: `há ${meio} dia${meio === 1 ? '' : 's'}` });
+  if (op.sinais[1]) events.push({ texto: op.sinais[1].texto, quando: `há ${Math.max(1, Math.floor(meio / 2))} dias` });
+  events.push({ texto: 'Detectado e qualificado pelo CaptaRadar', quando: 'hoje' });
+  return events;
+}
+function suggestionText(op) {
+  if (op.score >= 85) return 'Alta prioridade — o conjunto de sinais indica boa chance de negociação. Recomendamos contato ainda hoje.';
+  if (op.score >= 65) return 'Boa oportunidade — vale priorizar o contato nos próximos 2 dias.';
+  return 'Prioridade baixa por enquanto — mantenha em monitoramento e aguarde mais sinais.';
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── Leads extras que o scan pode "detectar" ───────────────────────────────
+const NEW_LEADS = [
+  { id:'25', endereco:'Rua Pompeu Loureiro, 90 — Apto 502', bairro:'Copacabana', plataforma:'zap', preco:720000, score:81, diasAnuncio:36, estagio:'novo',
+    sinais:[{cat:'urgencia',texto:'Anúncio há 36 dias sem alteração'},{cat:'preco',texto:'Queda de preço de 5% nos últimos 30 dias'}],
+    proprietario:{nome:'Helena Duarte', tipo:'Pessoa física', telefone:'(21) 99812-3345'} },
+  { id:'26', endereco:'Av. Epitácio Pessoa, 2400 — Apto 1101', bairro:'Ipanema', plataforma:'quintoandar', preco:1980000, score:77, diasAnuncio:21, estagio:'novo',
+    sinais:[{cat:'proprietario',texto:'Proprietário com 2 imóveis na região'},{cat:'urgencia',texto:'Repostado em 2 portais diferentes'}],
+    proprietario:{nome:'Sérgio Antunes', tipo:'Pessoa física', telefone:'(21) 98444-7810'} },
+  { id:'27', endereco:'Av. Olegário Maciel, 120 — Apto 304', bairro:'Barra da Tijuca', plataforma:'olx', preco:850000, score:68, diasAnuncio:11, estagio:'novo',
+    sinais:[{cat:'mercado',texto:'Baixa concorrência no condomínio'}],
+    proprietario:{nome:'Tatiane Melo', tipo:'Pessoa física', telefone:'(21) 99155-2277'} }
+];
+
+// ── Persistência do pipeline (localStorage) ───────────────────────────────
+function saveStages() {
+  try {
+    const m = {};
+    OPPORTUNITIES.forEach(o => { m[o.id] = o.estagio; });
+    localStorage.setItem('captaradar_stages', JSON.stringify(m));
+  } catch (e) {}
+}
+function loadStages() {
+  try {
+    const m = JSON.parse(localStorage.getItem('captaradar_stages') || '{}');
+    OPPORTUNITIES.forEach(o => { if (m[o.id]) o.estagio = m[o.id]; });
+  } catch (e) {}
+}
+
+// ── Mensagem de abordagem (IA) ───────────────────────────────
+function buildWhatsMessage(o) {
+  const isPF = o.proprietario.tipo === 'Pessoa física';
+  const nome = isPF ? ', ' + o.proprietario.nome.split(' ')[0] : '';
+  const local = o.endereco.split('—')[0].trim();
+  const temQueda = o.sinais.some(s => s.texto.toLowerCase().includes('queda') || s.texto.toLowerCase().includes('abaixo'));
+  const temTempo = o.diasAnuncio >= 30;
+  const temMulti = o.sinais.some(s => s.texto.toLowerCase().includes('portais') || s.texto.toLowerCase().includes('repostado'));
+
+  let gancho;
+  if (temTempo && temQueda) gancho = `vi que seu imóvel na ${local} está anunciado há ${o.diasAnuncio} dias e que o valor foi ajustado recentemente`;
+  else if (temTempo) gancho = `vi que seu imóvel na ${local} está anunciado há ${o.diasAnuncio} dias`;
+  else if (temMulti) gancho = `vi seu imóvel na ${local} anunciado em mais de um portal`;
+  else if (temQueda) gancho = `vi que o valor do seu imóvel na ${local} foi ajustado recentemente`;
+  else gancho = `vi seu anúncio do imóvel na ${local}`;
+
+  if (o.score >= 80) {
+    return `Olá${nome}, tudo bem? Sou da [Imobiliária] e ${gancho}. Trabalho com vendas em ${o.bairro} e tenho compradores buscando exatamente esse perfil de imóvel. Posso te mostrar como aceleramos essa venda, sem exclusividade?`;
+  }
+  if (o.score >= 60) {
+    return `Olá${nome}, tudo bem? Sou da [Imobiliária] e ${gancho}. Atuo bastante em ${o.bairro} e acredito que consigo te ajudar a dar mais visibilidade pra ele. Faz sentido conversarmos?`;
+  }
+  return `Olá${nome}, tudo bem? Sou da [Imobiliária], ${gancho} e achei bem interessante. Se em algum momento quiser apoio profissional na venda, fico à disposição pra conversar.`;
+}
+
+let msgModalLeadId = null;
+function openMsgModal(id) {
+  const o = OPPORTUNITIES.find(x => x.id === id);
+  if (!o) return;
+  msgModalLeadId = id;
+  document.getElementById('msgPreview').textContent = buildWhatsMessage(o);
+  document.getElementById('msgModalSub').textContent = `${o.proprietario.nome} · ${o.proprietario.telefone}`;
+  document.getElementById('msgMeta').textContent = `Tom calibrado pelo score ${o.score}: ${o.score >= 80 ? 'abordagem direta' : o.score >= 60 ? 'abordagem consultiva' : 'abordagem suave'}. Edite à vontade antes de enviar.`;
+  document.getElementById('btnMarkContacted').style.display = o.estagio === 'novo' ? '' : 'none';
+  document.getElementById('msgModalOverlay').classList.add('open');
+  document.getElementById('msgModal').classList.add('open');
+}
+function closeMsgModal() {
+  document.getElementById('msgModalOverlay').classList.remove('open');
+  document.getElementById('msgModal').classList.remove('open');
+  msgModalLeadId = null;
+}
+
+// ── Ações ───────────────────────────────
+function quickWhats(id) { openMsgModal(id); }
+function quickCall(id) {
+  const o = OPPORTUNITIES.find(x => x.id === id);
+  showToast(`Discando para ${o.proprietario.nome.split(' ')[0]} (${o.proprietario.telefone})...`);
+}
+function advanceStage(id) {
+  const o = OPPORTUNITIES.find(x => x.id === id);
+  const idx = PIPELINE_STAGES.findIndex(s => s.key === o.estagio);
+  if (idx < PIPELINE_STAGES.length - 1) {
+    o.estagio = PIPELINE_STAGES[idx + 1].key;
+    saveStages();
+    showToast(`Lead movido para "${stageLabel(o.estagio)}"`);
+    if (state.currentDrawerId === id) openDrawer(id);
+  } else {
+    showToast('Este lead já está na etapa final do pipeline.');
+  }
+}
+function moveOpportunityStage(id, stageKey) {
+  const op = OPPORTUNITIES.find(o => o.id === id);
+  if (!op || op.estagio === stageKey) return;
+  op.estagio = stageKey;
+  saveStages();
+  renderPipeline();
+  showToast(`Lead movido para "${stageLabel(stageKey)}"`);
+}
+function markContacted() {
+  if (!msgModalLeadId) return;
+  const o = OPPORTUNITIES.find(x => x.id === msgModalLeadId);
+  if (o && o.estagio === 'novo') {
+    o.estagio = 'contatado';
+    saveStages();
+    state.activity.unshift({ texto: `Lead "${o.endereco}" marcado como contatado`, bairro: o.bairro, quando: 'agora', color: 'var(--green)' });
+    showToast('Lead movido para "Contatado"');
+  }
+  closeMsgModal();
+  router();
+}
+function exportCSV() {
+  const list = filteredSortedOpps();
+  const head = ['Imovel', 'Bairro', 'Plataforma', 'Preco', 'Dias no ar', 'Score', 'Estagio', 'Proprietario', 'Telefone'];
+  const rows = list.map(o => [
+    o.endereco, o.bairro, PLATFORMS[o.plataforma].label, o.preco, o.diasAnuncio, o.score,
+    stageLabel(o.estagio), o.proprietario.nome, o.proprietario.telefone
+  ]);
+  const csv = '﻿' + [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'captaradar-oportunidades.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast(`${list.length} oportunidades exportadas em CSV`);
+}
+function goToOpportunity(id) {
+  location.hash = 'oportunidades';
+  setTimeout(() => openDrawer(id), 60);
+}
+function removeBairro(b) {
+  SETTINGS.bairros = SETTINGS.bairros.filter(x => x !== b);
+  renderConfiguracoes();
+}
+function copyWebhook() {
+  const input = document.getElementById('webhookInput');
+  input.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  if (navigator.clipboard) navigator.clipboard.writeText(SETTINGS.webhookUrl).catch(() => {});
+  showToast('Link do webhook copiado');
+}
+
+// ── Drawer ───────────────────────────────
+function openDrawer(id) {
+  const o = OPPORTUNITIES.find(x => x.id === id);
+  if (!o) return;
+  state.currentDrawerId = id;
+  const cats = ['preco', 'urgencia', 'proprietario', 'mercado'];
+  const drawer = document.getElementById('drawer');
+  drawer.innerHTML = `
+    <div class="drawer-head">
+      <div><h2>${o.endereco}</h2><p>${o.bairro} · <span class="tag tag-${o.plataforma}">${PLATFORMS[o.plataforma].label}</span></p></div>
+      <button class="btn btn-ghost btn-sm" onclick="closeDrawer()">${ICONS.x}</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-section">
+        <h4>Resumo</h4>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:6px;"><span style="color:var(--text-muted)">Preço</span><strong>${formatBRL(o.preco)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:6px;"><span style="color:var(--text-muted)">Dias no ar</span><strong>${o.diasAnuncio} dias</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;"><span style="color:var(--text-muted)">Estágio</span><strong>${stageLabel(o.estagio)}</strong></div>
+      </div>
+      <div class="drawer-section">
+        <h4>Score da oportunidade
+          <span class="info-tip">${ICONS.info}<span class="bubble">O score combina 4 fatores: sinais de preço, urgência do anúncio, perfil do proprietário e condições de mercado no bairro.</span></span>
+        </h4>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span style="font-size:1.6rem;font-weight:700;color:${scoreColor(o.score)}">${o.score}</span>
+          <span style="font-size:.78rem;color:var(--text-muted)">de 100</span>
+        </div>
+        ${cats.map(c => {
+          const val = categoryScore(o, c);
+          return `<div class="score-breakdown-row"><span class="cat-label">${SIGNAL_CATS[c].label}</span><div class="bar-track"><div class="bar-fill" style="width:${val}%;background:${scoreColor(val)}"></div></div><span class="cat-val">${val}</span></div>`;
+        }).join('')}
+      </div>
+      <div class="drawer-section">
+        <h4>Sinais detectados</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${o.sinais.map(s => `<span class="signal-chip cat-${s.cat}">${s.texto}</span>`).join('')}
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h4>Linha do tempo</h4>
+        ${buildTimeline(o).map(ev => `<div class="timeline-item"><div class="timeline-dot"></div><div><p>${ev.texto}</p><span>${ev.quando}</span></div></div>`).join('')}
+      </div>
+      <div class="drawer-section">
+        <h4>Proprietário</h4>
+        <div class="owner-card">
+          <div><div class="name">${o.proprietario.nome}</div><div class="meta">${o.proprietario.tipo} · ${o.proprietario.telefone}</div></div>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h4>Sugestão do CaptaRadar</h4>
+        <div class="suggestion-box">${ICONS.info}<span>${suggestionText(o)}</span></div>
+      </div>
+      <div class="drawer-actions">
+        <button class="btn btn-primary btn-sm" onclick="quickWhats('${o.id}')">${ICONS.message} WhatsApp</button>
+        <button class="btn btn-sm" onclick="quickCall('${o.id}')">${ICONS.phone} Ligar</button>
+        <button class="btn btn-sm" onclick="advanceStage('${o.id}')">${ICONS.chevronRight} Mover no pipeline</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('drawerOverlay').classList.add('open');
+  drawer.classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+  state.currentDrawerId = null;
+}
+
+// ── Dashboard ───────────────────────────────
+function renderDashboard() {
+  const el = document.getElementById('page-dashboard');
+  const qualificados = OPPORTUNITIES.filter(o => o.score >= 70).length;
+  const fechados = OPPORTUNITIES.filter(o => o.estagio === 'fechado').length;
+  const conversao = Math.round((fechados / OPPORTUNITIES.length) * 100);
+  const alertasHoje = 23 + state.scanCount;
+
+  el.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Imóveis monitorados</div><div class="kpi-value">1.842</div><div class="kpi-sub">em 4 portais + grupos locais</div></div>
+      <div class="kpi-card"><div class="kpi-label">Alertas hoje</div><div class="kpi-value">${alertasHoje}</div><div class="kpi-sub up">novas oportunidades detectadas</div></div>
+      <div class="kpi-card"><div class="kpi-label">Leads qualificados</div><div class="kpi-value">${qualificados}</div><div class="kpi-sub">score ≥ 70 na base atual</div></div>
+      <div class="kpi-card"><div class="kpi-label">Taxa de conversão</div><div class="kpi-value">${conversao}%</div><div class="kpi-sub">leads fechados sobre o total</div></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <h3>Captação por semana</h3>
+          <p class="panel-sub">Novas oportunidades detectadas pelo CaptaRadar, últimas 6 semanas.</p>
+          <div style="height:180px"><canvas id="chartWeekly"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Top oportunidades</h3>
+          <p class="panel-sub">Os leads com maior score no momento.</p>
+          <div id="topOppsList"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h3>Funil de conversão</h3>
+          <p class="panel-sub">Distribuição dos leads por estágio no pipeline.</p>
+          <div id="funnelWrap"></div>
+        </div>
+        <div class="panel">
+          <h3>Origem dos leads</h3>
+          <p class="panel-sub">Participação de cada plataforma na base atual.</p>
+          <div id="platformDist"></div>
+        </div>
+        <div class="panel">
+          <h3>Atividade recente</h3>
+          <div id="activityFeed"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const top5 = [...OPPORTUNITIES].sort((a, b) => b.score - a.score).slice(0, 5);
+  document.getElementById('topOppsList').innerHTML = top5.map(o => `
+    <div class="mini-list-row" onclick="goToOpportunity('${o.id}')">
+      <div><span class="addr-link" style="font-weight:600;">${o.endereco}</span><div style="color:var(--text-muted);font-size:.74rem;">${o.bairro} · ${formatBRL(o.preco)}</div></div>
+      <div class="score-cell"><span class="score-num" style="color:${scoreColor(o.score)}">${o.score}</span></div>
+    </div>
+  `).join('');
+
+  const counts = PIPELINE_STAGES.map(s => OPPORTUNITIES.filter(o => o.estagio === s.key).length);
+  const max = Math.max(...counts, 1);
+  document.getElementById('funnelWrap').innerHTML = PIPELINE_STAGES.map((s, i) => `
+    <div class="funnel-row">
+      <div class="funnel-label"><span>${s.label}</span><span>${counts[i]}</span></div>
+      <div class="funnel-track"><div class="funnel-fill" style="width:${(counts[i] / max * 100).toFixed(0)}%"></div></div>
+    </div>
+  `).join('');
+
+  document.getElementById('platformDist').innerHTML = Object.keys(PLATFORMS).map(k => {
+    const count = OPPORTUNITIES.filter(o => o.plataforma === k).length;
+    const pct = Math.round(count / OPPORTUNITIES.length * 100);
+    return `<div class="mini-list-row" style="cursor:default;"><span class="tag tag-${k}">${PLATFORMS[k].label}</span><span>${pct}%</span></div>`;
+  }).join('');
+
+  document.getElementById('activityFeed').innerHTML = state.activity.slice(0, 6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot" style="background:${a.color}"></div>
+      <div><p>${a.texto}</p><span>${a.bairro ? a.bairro + ' · ' : ''}${a.quando}</span></div>
+    </div>
+  `).join('');
+
+  renderWeeklyChart();
+}
+function renderWeeklyChart() {
+  const canvas = document.getElementById('chartWeekly');
+  if (!canvas) return;
+  if (weeklyChartInstance) weeklyChartInstance.destroy();
+  weeklyChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+      datasets: [{ data: [14, 19, 16, 25, 22, 31], backgroundColor: '#2563eb', borderRadius: 4, maxBarThickness: 28 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 10.5 } } },
+        y: { grid: { color: '#f0f1f3' }, ticks: { color: '#6b7280', font: { size: 10.5 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ── Oportunidades ───────────────────────────────
+function filteredSortedOpps() {
+  let list = OPPORTUNITIES.filter(o => {
+    if (state.filters.plataforma && o.plataforma !== state.filters.plataforma) return false;
+    if (state.filters.bairro && o.bairro !== state.filters.bairro) return false;
+    if (o.score < state.filters.minScore) return false;
+    if (state.filters.busca) {
+      const q = state.filters.busca.toLowerCase();
+      if (!o.endereco.toLowerCase().includes(q) && !o.bairro.toLowerCase().includes(q) && !o.proprietario.nome.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  list.sort((a, b) => {
+    let va = a[state.sortField], vb = b[state.sortField];
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+    if (va < vb) return state.sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return state.sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+function renderOportunidades() {
+  const el = document.getElementById('page-oportunidades');
+  const bairrosUnicos = [...new Set(OPPORTUNITIES.map(o => o.bairro))].sort();
+  el.innerHTML = `
+    <div class="filters-bar">
+      <select id="fPlatform">
+        <option value="">Todas as plataformas</option>
+        ${Object.keys(PLATFORMS).map(k => `<option value="${k}">${PLATFORMS[k].label}</option>`).join('')}
+      </select>
+      <select id="fBairro">
+        <option value="">Todos os bairros</option>
+        ${bairrosUnicos.map(b => `<option value="${b}">${b}</option>`).join('')}
+      </select>
+      <select id="fScore">
+        <option value="0">Score mínimo: qualquer</option>
+        <option value="50">Score mínimo: 50</option>
+        <option value="70">Score mínimo: 70</option>
+        <option value="85">Score mínimo: 85</option>
+      </select>
+      <input type="text" id="fBusca" placeholder="Buscar por endereço, bairro ou proprietário...">
+      <button class="btn btn-sm" id="btnExportCsv">Exportar CSV</button>
+      <span class="filters-count" id="filtersCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-field="endereco">Imóvel</th>
+          <th data-field="bairro">Bairro</th>
+          <th>Plataforma</th>
+          <th data-field="preco">Preço</th>
+          <th data-field="diasAnuncio">Dias no ar</th>
+          <th data-field="score">Score</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="oppsTbody"></tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('fPlatform').value = state.filters.plataforma;
+  document.getElementById('fBairro').value = state.filters.bairro;
+  document.getElementById('fScore').value = String(state.filters.minScore);
+  document.getElementById('fBusca').value = state.filters.busca;
+
+  document.getElementById('fPlatform').addEventListener('change', e => { state.filters.plataforma = e.target.value; renderOppsTable(); });
+  document.getElementById('fBairro').addEventListener('change', e => { state.filters.bairro = e.target.value; renderOppsTable(); });
+  document.getElementById('fScore').addEventListener('change', e => { state.filters.minScore = Number(e.target.value); renderOppsTable(); });
+  document.getElementById('fBusca').addEventListener('input', e => { state.filters.busca = e.target.value; renderOppsTable(); });
+  document.getElementById('btnExportCsv').addEventListener('click', exportCSV);
+
+  el.querySelectorAll('th[data-field]').forEach(th => {
+    th.addEventListener('click', () => {
+      const f = th.dataset.field;
+      if (state.sortField === f) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortField = f; state.sortDir = 'desc'; }
+      renderOppsTable();
+    });
+  });
+
+  renderOppsTable();
+}
+function renderOppsTable() {
+  const tbody = document.getElementById('oppsTbody');
+  const list = filteredSortedOpps();
+  document.getElementById('filtersCount').textContent = `${list.length} de ${OPPORTUNITIES.length} imóveis`;
+
+  document.querySelectorAll('.data-table thead th[data-field]').forEach(th => {
+    const existing = th.querySelector('.sort-ind');
+    if (existing) existing.remove();
+    if (th.dataset.field === state.sortField) {
+      th.insertAdjacentHTML('beforeend', `<span class="sort-ind">${state.sortDir === 'asc' ? '▲' : '▼'}</span>`);
+    }
+  });
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Nenhum imóvel encontrado com esses filtros.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(o => `
+    <tr onclick="openDrawer('${o.id}')">
+      <td><strong>${o.endereco}</strong></td>
+      <td>${o.bairro}</td>
+      <td><span class="tag tag-${o.plataforma}">${PLATFORMS[o.plataforma].label}</span></td>
+      <td>${formatBRL(o.preco)}</td>
+      <td>${o.diasAnuncio}d</td>
+      <td>
+        <div class="score-cell">
+          <div class="score-bar-track"><div class="score-bar-fill" style="width:${o.score}%;background:${scoreColor(o.score)}"></div></div>
+          <span class="score-num" style="color:${scoreColor(o.score)}">${o.score}</span>
+        </div>
+      </td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-sm btn-ghost" onclick="quickWhats('${o.id}')" title="WhatsApp">${ICONS.message}</button></td>
+    </tr>
+  `).join('');
+}
+
+// ── Pipeline ───────────────────────────────
+function renderPipeline() {
+  const el = document.getElementById('page-pipeline');
+  el.innerHTML = `<div class="kanban" id="kanbanWrap"></div>`;
+  const wrap = document.getElementById('kanbanWrap');
+  wrap.innerHTML = PIPELINE_STAGES.map(s => {
+    const items = OPPORTUNITIES.filter(o => o.estagio === s.key);
+    return `
+    <div class="kanban-col" data-stage="${s.key}">
+      <div class="kanban-col-head"><h4>${s.label}</h4><span class="count">${items.length}</span></div>
+      ${items.map(o => `
+        <div class="kanban-card" draggable="true" data-id="${o.id}">
+          <div class="addr">${o.endereco}</div>
+          <div class="meta-row"><span class="tag tag-${o.plataforma}">${PLATFORMS[o.plataforma].label}</span><span style="color:${scoreColor(o.score)};font-weight:700;">${o.score}</span></div>
+          <div class="meta-row" style="margin-top:6px;"><span>${formatBRL(o.preco)}</span><span>${o.bairro}</span></div>
+        </div>
+      `).join('') || `<div style="font-size:.75rem;color:var(--text-faint);text-align:center;padding:20px 0;">Nenhum lead nesta etapa</div>`}
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.id); card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('click', () => openDrawer(card.dataset.id));
+  });
+  wrap.querySelectorAll('.kanban-col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      moveOpportunityStage(id, col.dataset.stage);
+    });
+  });
+}
+
+// ── Configurações ───────────────────────────────
+function renderConfiguracoes() {
+  const el = document.getElementById('page-configuracoes');
+  el.innerHTML = `
+    <div class="settings-grid">
+      <div>
+        <div class="panel">
+          <h3>Plataformas monitoradas</h3>
+          <p class="panel-sub">Escolha de quais portais o CaptaRadar coleta anúncios.</p>
+          ${Object.keys(PLATFORMS).map(k => `
+            <div class="switch-row">
+              <div class="label">${PLATFORMS[k].label}</div>
+              <label class="switch"><input type="checkbox" data-platform="${k}" ${SETTINGS.platforms[k] ? 'checked' : ''}><span class="track"></span></label>
+            </div>
+          `).join('')}
+        </div>
+        <div class="panel">
+          <h3>Bairros monitorados</h3>
+          <p class="panel-sub">Regiões priorizadas na busca por oportunidades.</p>
+          <div class="chip-input-wrap">
+            ${SETTINGS.bairros.map(b => `<span class="chip">${b}<button onclick="removeBairro('${b}')">${ICONS.x}</button></span>`).join('')}
+            <input class="chip-add-input" id="addBairroInput" placeholder="Adicionar bairro e Enter...">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h3>Alertas</h3>
+          <p class="panel-sub">Quando você quer ser notificado de uma nova oportunidade.</p>
+          <div class="field-row">
+            <label>Score mínimo para alertar</label>
+            <input type="range" min="0" max="100" step="5" id="minScoreRange" value="${SETTINGS.minScoreAlert}">
+            <div class="range-val" id="minScoreVal">${SETTINGS.minScoreAlert} pontos</div>
+          </div>
+          <div class="switch-row">
+            <div class="label">Notificar por e-mail</div>
+            <label class="switch"><input type="checkbox" id="notifyEmail" ${SETTINGS.notifyEmail ? 'checked' : ''}><span class="track"></span></label>
+          </div>
+          <div class="switch-row">
+            <div class="label">Notificar por WhatsApp</div>
+            <label class="switch"><input type="checkbox" id="notifyWhats" ${SETTINGS.notifyWhats ? 'checked' : ''}><span class="track"></span></label>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Integrações</h3>
+          <p class="panel-sub">Conecte o CaptaRadar às ferramentas que sua imobiliária já usa.</p>
+          <div class="integration-row">
+            <span class="name">WhatsApp Business API</span>
+            <span class="${SETTINGS.whatsappConnected ? 'status-connected' : 'status-pending'}"><span class="status-dot"></span> ${SETTINGS.whatsappConnected ? 'Conectado' : 'Não conectado'}</span>
+          </div>
+          <div class="integration-row" style="flex-direction:column;align-items:stretch;">
+            <span class="name">Webhook para CRM</span>
+            <div class="copy-field" style="margin-top:8px;">
+              <input type="text" readonly value="${SETTINGS.webhookUrl}" id="webhookInput">
+              <button class="btn btn-sm" onclick="copyWebhook()">${ICONS.copy} Copiar</button>
+            </div>
+          </div>
+          <div class="integration-row">
+            <span class="name">Zapier / Make</span>
+            <span class="status-pending"><span class="status-dot"></span> Em breve</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  el.querySelectorAll('input[data-platform]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      SETTINGS.platforms[inp.dataset.platform] = inp.checked;
+      showToast(`${PLATFORMS[inp.dataset.platform].label} ${inp.checked ? 'ativado' : 'desativado'}`);
+    });
+  });
+  document.getElementById('addBairroInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+      SETTINGS.bairros.push(e.target.value.trim());
+      renderConfiguracoes();
+    }
+  });
+  document.getElementById('minScoreRange').addEventListener('input', e => {
+    document.getElementById('minScoreVal').textContent = `${e.target.value} pontos`;
+  });
+  document.getElementById('minScoreRange').addEventListener('change', e => {
+    SETTINGS.minScoreAlert = Number(e.target.value);
+    showToast('Limite de alerta atualizado');
+  });
+  document.getElementById('notifyEmail').addEventListener('change', e => { SETTINGS.notifyEmail = e.target.checked; });
+  document.getElementById('notifyWhats').addEventListener('change', e => { SETTINGS.notifyWhats = e.target.checked; });
+}
+
+// ── Router ───────────────────────────────
+const ROUTES = {
+  dashboard:      { title: 'Dashboard',      subtitle: 'Visão geral da captação nos últimos 30 dias.',                          render: renderDashboard },
+  oportunidades:  { title: 'Oportunidades',  subtitle: 'Todos os imóveis monitorados, com os sinais que indicam chance de negociação.', render: renderOportunidades },
+  pipeline:       { title: 'Pipeline',       subtitle: 'Acompanhe cada lead da captação até o fechamento.',                     render: renderPipeline },
+  configuracoes:  { title: 'Configurações',  subtitle: 'Plataformas monitoradas, alertas e integrações.',                       render: renderConfiguracoes }
+};
+function currentRoute() {
+  const h = (location.hash || '#dashboard').replace('#', '');
+  return ROUTES[h] ? h : 'dashboard';
+}
+function router() {
+  const r = currentRoute();
+  closeDrawer();
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById('page-' + r).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === r));
+  document.getElementById('pageTitle').textContent = ROUTES[r].title;
+  document.getElementById('pageSubtitle').textContent = ROUTES[r].subtitle;
+  ROUTES[r].render();
+  toggleSidebar(false);
+}
+
+function toggleSidebar(force) {
+  const sb = document.querySelector('.sidebar');
+  const bd = document.getElementById('sidebarBackdrop');
+  const willOpen = force !== undefined ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', willOpen);
+  bd.classList.toggle('show', willOpen);
+}
+
+window.addEventListener('hashchange', router);
+window.addEventListener('DOMContentLoaded', () => {
+  loadStages();
+  document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+  document.getElementById('btnMenuToggle').addEventListener('click', () => toggleSidebar());
+  document.getElementById('sidebarBackdrop').addEventListener('click', () => toggleSidebar(false));
+
+  document.getElementById('msgModalOverlay').addEventListener('click', closeMsgModal);
+  document.getElementById('msgModalClose').addEventListener('click', closeMsgModal);
+  document.getElementById('btnMarkContacted').addEventListener('click', markContacted);
+  document.getElementById('btnCopyMsg').addEventListener('click', () => {
+    const txt = document.getElementById('msgPreview').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+    showToast('Mensagem copiada');
+  });
+  document.getElementById('btnOpenWhats').addEventListener('click', () => {
+    const txt = document.getElementById('msgPreview').textContent;
+    window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+  });
+
+  document.getElementById('btnLogout').addEventListener('click', () => {
+    try { sessionStorage.removeItem('captaradar_demo'); } catch (e) {}
+    const pass = document.getElementById('loginPass');
+    if (pass) pass.value = '';
+    document.getElementById('loginError').classList.remove('show');
+    document.getElementById('loginScreen').classList.remove('hidden');
+  });
+
+  document.getElementById('btnScan').addEventListener('click', function () {
+    const btn = this;
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = 'Escaneando...';
+    setTimeout(() => {
+      state.scanCount += Math.floor(Math.random() * 3) + 1;
+      if (NEW_LEADS.length) {
+        const novo = NEW_LEADS.shift();
+        OPPORTUNITIES.unshift(novo);
+        state.activity.unshift({ texto: `Nova oportunidade detectada: ${novo.endereco}`, bairro: novo.bairro, quando: 'agora', color: 'var(--green)' });
+        showToast(`Scan concluído: 1 nova oportunidade encontrada (score ${novo.score})`);
+      } else {
+        showToast('Scan concluído: portais reverificados, nenhum anúncio novo');
+      }
+      state.activity.unshift({ texto: 'Scan concluído em todas as plataformas monitoradas', quando: 'agora', color: 'var(--primary)' });
+      btn.innerHTML = original;
+      btn.disabled = false;
+      router();
+    }, 1100);
+  });
+  router();
+});
+</script>
+</body>
+</html>
