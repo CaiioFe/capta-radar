@@ -69,7 +69,7 @@ Portais monitorados, bairros prioritários, score mínimo de alerta e canal de n
 |---|---|---|
 | Front | HTML + CSS + JS puro, Chart.js | React + Tailwind |
 | Dados | Mock representativo em memória | Supabase (Postgres) |
-| Coleta | — | Scrapers por portal + fila de scan agendado |
+| Coleta | simulada (demo) | Scrapers por portal + fila de scan agendado |
 | IA | Templates calibrados por score | LLM (Claude) pra leitura de sinais e geração de mensagem |
 | Abordagem | Link `wa.me` com texto pronto | WhatsApp Business API oficial |
 | Deploy | Vercel (estático) | Vercel + workers de coleta |
